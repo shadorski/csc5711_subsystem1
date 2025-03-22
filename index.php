@@ -72,7 +72,7 @@ session_start();
             <div class="card content-card p-5" style="max-width: 1000px; width: 100%;">
                 <div class="card-body text-center">
                     <h2 class="card-title mb-4">Welcome to Subsystem 1</h2>
-                    <p class="card-text mb-4">Please sign in or create an account to continue</p>
+                    <p class="card-text mb-4">Please sign in or create an account to continue!</p>
                     <div class="d-flex justify-content-center gap-3">
                         <a href="login.php" class="btn btn-primary btn-lg px-3">Sign In</a>
                         <a href="signup.php" class="btn btn-outline-light btn-lg px-3">Sign Up</a>
