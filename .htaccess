@@ -1,0 +1,8 @@
+RewriteEngine On
+RewriteBase /subsystem1/
+
+# Check if the request is not a file or directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# Route all requests to index.php
+RewriteRule ^(.*)$ index.php [QSA,L]

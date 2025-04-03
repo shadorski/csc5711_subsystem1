@@ -14,13 +14,7 @@ if(isset($_SESSION['user_id'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Subsystem 1</title>
     <link href="/subsystem1/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(to top, #1C2526, #4B5E6A, #6A0DAD);
-            min-height: 100vh;
-            color: white;
-        }
-    </style>
+    <link href="/subsystem1/css/styles.css" rel="stylesheet">
 </head>
 <body>
     <!-- Add your login form here -->
