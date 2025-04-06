@@ -1,7 +1,7 @@
 <?php
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Server\RequestHandlerInterface as RequestHandler; // Added this
+use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Factory\AppFactory;
 use DI\Container;
 
@@ -130,7 +130,8 @@ $app->post('/signup', function (Request $request, Response $response) use ($cont
                 $errors[] = "Username already exists.";
             } else {
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("INSERT INTO users (username, first_name, last_name, gender, password) VALUES (?, ?, ?, ?, ?)");
+                $create_date = date("Y-m-d H:m:s");
+                $stmt = $conn->prepare("INSERT INTO users (username, first_name, last_name, gender, password, date_created, last_login) VALUES (?, ?, ?, ?, ?, $create_date, $create_date)");
                 $stmt->bind_param("sssss", $username, $first_name, $last_name, $gender, $hashed_password);
                 if ($stmt->execute()) {
                     $_SESSION['user_id'] = $conn->insert_id;

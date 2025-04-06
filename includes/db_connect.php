@@ -11,6 +11,7 @@ class Database {
                 $this->conn = null;
             } else {
                 $this->conn->set_charset("utf8mb4");
+                error_log("[DB LOG] Connected to $host, db: $dbname at " . date("Y-m-d H:m:s") . "\n");
             }
         } catch (mysqli_sql_exception $e) {
             error_log("[DB ERROR] Connection failed: " . $e->getMessage() . "\n");
