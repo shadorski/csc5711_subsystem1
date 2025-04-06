@@ -20,7 +20,7 @@ if (!isset($_SESSION['user_id'])) {
 
     <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 56px);">
         <div class="text-center">
-            <h1 class="display-4">Welcome Back!</h1>
+            <h1 class="display-4">Welcome Back<?php if(isset($_SESSION['username'])){echo ' '.$_SESSION['username'];} ?>!</h1>
             <p class="lead">This is your personalized content area.</p>
         </div>
     </div>

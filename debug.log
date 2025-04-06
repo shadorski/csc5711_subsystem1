@@ -184,3 +184,47 @@
 )
 
 2025-04-06 12:04:27 [DEBUG] Parsed username: 'newguy'
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
+[DEBUG] Login POST data: Array
+(
+    [username] => kaoma
+    [password] => password
+)
+
+[DEBUG] Login failed for username: kaoma
+[DEBUG] Login POST data: Array
+(
+    [username] => kaoma
+    [password] => password
+)
+
+[DEBUG] Login failed for username: kaoma
+[DEBUG] Login POST data: Array
+(
+    [username] => kaoma
+    [password] => password
+)
+
+[DEBUG] Login failed for username: kaoma
+[DEBUG] Login POST data: Array
+(
+    [username] => kao
+    [password] => password
+)
+
+[DEBUG] User logged in successfully: kao
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
+[DEBUG] Login POST data: Array
+(
+    [username] => kao
+    [password] => password
+)
+
+[DEBUG] User logged in successfully: kao
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed

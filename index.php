@@ -10,7 +10,7 @@ session_start();
 
 // Simple logging function
 function logDebug($message) {
-    error_log(date("Y-m-d H:m:s") . " [DEBUG] " . $message . "\n", 3, __DIR__ . '/debug.log');
+    error_log("[DEBUG] " . $message . "\n", 3, __DIR__ . '/debug.log');
 }
 
 // Create container and set it for Slim
@@ -130,8 +130,7 @@ $app->post('/signup', function (Request $request, Response $response) use ($cont
                 $errors[] = "Username already exists.";
             } else {
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $create_date = date("Y-m-d H:m:s");
-                $stmt = $conn->prepare("INSERT INTO users (username, first_name, last_name, gender, password, date_created, last_login) VALUES (?, ?, ?, ?, ?, $create_date, $create_date)");
+                $stmt = $conn->prepare("INSERT INTO users (username, first_name, last_name, gender, password) VALUES (?, ?, ?, ?, ?)");
                 $stmt->bind_param("sssss", $username, $first_name, $last_name, $gender, $hashed_password);
                 if ($stmt->execute()) {
                     $_SESSION['user_id'] = $conn->insert_id;
@@ -146,6 +145,69 @@ $app->post('/signup', function (Request $request, Response $response) use ($cont
 
     ob_start();
     include __DIR__ . '/signup.php';
+    $html = ob_get_clean();
+    $response->getBody()->write($html);
+    return $response->withHeader('Content-Type', 'text/html');
+});
+
+// Login page (GET)
+$app->get('/login', function (Request $request, Response $response) {
+    if (isset($_SESSION['user_id'])) {
+        return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
+    }
+    ob_start();
+    include __DIR__ . '/login.php';
+    $html = ob_get_clean();
+    $response->getBody()->write($html);
+    return $response->withHeader('Content-Type', 'text/html');
+});
+
+// Login form submission (POST)
+$app->post('/login', function (Request $request, Response $response) use ($container) {
+    if (isset($_SESSION['user_id'])) {
+        return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
+    }
+    $data = $request->getParsedBody();
+    logDebug("Login POST data: " . print_r($data, true));
+
+    $username = trim($data['username'] ?? '');
+    $password = $data['password'] ?? '';
+
+    $errors = [];
+    if (empty($username)) {
+        $errors[] = "Username is required.";
+    }
+    if (empty($password)) {
+        $errors[] = "Password is required.";
+    }
+
+    $user_id = '';
+    $hashed_password = '';
+
+    if (empty($errors)) {
+        $db = $container->get('db');
+        $conn = $db->getConnection();
+        $stmt = $conn->prepare("SELECT id, password FROM users WHERE username = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $stmt->bind_result($user_id, $hashed_password);
+        if ($stmt->fetch() && password_verify($password, $hashed_password)) {
+            $_SESSION['user_id'] = $user_id;
+            $_SESSION['username'] = $username;
+            //update last login
+            
+            logDebug("User logged in successfully: $username");
+            $stmt->close();
+            return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
+        } else {
+            $errors[] = "Invalid username or password.";
+            logDebug("Login failed for username: $username");
+        }
+        $stmt->close();
+    }
+
+    ob_start();
+    include __DIR__ . '/login.php';
     $html = ob_get_clean();
     $response->getBody()->write($html);
     return $response->withHeader('Content-Type', 'text/html');
