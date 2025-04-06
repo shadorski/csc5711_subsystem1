@@ -17,6 +17,8 @@ class ComposerStaticInit026509606a55be5c56c243e48adc6597
         'S' => 
         array (
             'Symfony\\Polyfill\\Php80\\' => 23,
+            'Symfony\\Component\\Process\\' => 26,
+            'Spatie\\PdfToText\\' => 17,
             'Slim\\Psr7\\' => 10,
             'Slim\\' => 5,
         ),
@@ -26,6 +28,8 @@ class ComposerStaticInit026509606a55be5c56c243e48adc6597
             'Psr\\Http\\Server\\' => 16,
             'Psr\\Http\\Message\\' => 17,
             'Psr\\Container\\' => 14,
+            'PhpOffice\\PhpWord\\' => 18,
+            'PhpOffice\\Math\\' => 15,
         ),
         'L' => 
         array (
@@ -50,6 +54,14 @@ class ComposerStaticInit026509606a55be5c56c243e48adc6597
         'Symfony\\Polyfill\\Php80\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php80',
+        ),
+        'Symfony\\Component\\Process\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/symfony/process',
+        ),
+        'Spatie\\PdfToText\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/spatie/pdf-to-text/src',
         ),
         'Slim\\Psr7\\' => 
         array (
@@ -76,6 +88,14 @@ class ComposerStaticInit026509606a55be5c56c243e48adc6597
         'Psr\\Container\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/container/src',
+        ),
+        'PhpOffice\\PhpWord\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/phpoffice/phpword/src/PhpWord',
+        ),
+        'PhpOffice\\Math\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/phpoffice/math/src/Math',
         ),
         'Laravel\\SerializableClosure\\' => 
         array (

@@ -4,6 +4,8 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Slim\Factory\AppFactory;
 use DI\Container;
+use Spatie\PdfToText\Pdf;
+use PhpOffice\PhpWord\IOFactory;
 
 require __DIR__ . '/vendor/autoload.php';
 session_start();
@@ -194,8 +196,12 @@ $app->post('/login', function (Request $request, Response $response) use ($conta
         if ($stmt->fetch() && password_verify($password, $hashed_password)) {
             $_SESSION['user_id'] = $user_id;
             $_SESSION['username'] = $username;
+
             //update last login
-            
+            $update_stmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+            $update_stmt->bind_param("i", $user_id);
+            $update_stmt->execute();
+           
             logDebug("User logged in successfully: $username");
             $stmt->close();
             return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
@@ -248,6 +254,163 @@ $app->post('/api/user/check_username', function (Request $request, Response $res
     $payload = json_encode(['exists' => $count > 0]);
     $response->getBody()->write($payload);
     return $response->withHeader('Content-Type', 'application/json');
+});
+
+// Upload page (GET)
+$app->get('/upload', function (Request $request, Response $response) {
+    if (!isset($_SESSION['user_id'])) {
+        return $response->withHeader('Location', '/subsystem1/login')->withStatus(302);
+    }
+    ob_start();
+    include __DIR__ . '/upload.php';
+    $html = ob_get_clean();
+    $response->getBody()->write($html);
+    return $response->withHeader('Content-Type', 'text/html');
+});
+
+
+// Upload form submission (POST)
+$app->post('/upload', function (Request $request, Response $response) use ($container) {
+    if (!isset($_SESSION['user_id'])) {
+        return $response->withHeader('Location', '/subsystem1/login')->withStatus(302);
+    }
+
+    $data = $request->getParsedBody();
+    $file = $request->getUploadedFiles()['file'] ?? null;
+    $user_id = $_SESSION['user_id'];
+
+    $title = trim($data['title'] ?? '');
+    $author = trim($data['author'] ?? '');
+    $isbn = trim($data['isbn'] ?? '');
+
+    $allowed_file_types = ['txt', 'rtf', 'pdf', 'docx', 'epub', 'html'];
+
+    $errors = [];
+    if (empty($title) || strlen($title) > 255) $errors[] = "Title is required and must be 255 characters or less.";
+    //if (empty($author) || strlen($author) > 255) $errors[] = "Author is required and must be 255 characters or less.";
+    //if (empty($isbn) || !preg_match('/^\d{13}$|^\d{3}-\d{1}-\d{3}-\d{5}-\d{1}$/', $isbn)) $errors[] = "ISBN must be 13 digits or in XXX-X-XXX-XXXXX-X format.";
+    if (!$file || $file->getError() === UPLOAD_ERR_NO_FILE) $errors[] = "File is required.";
+    elseif ($file->getError() !== UPLOAD_ERR_OK) $errors[] = "File upload failed.";
+
+    if (empty($errors)) {
+        $file_extension = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
+        if (!in_array($file_extension, $allowed_file_types)) {
+            $errors[] = "Only .txt, .rtf, .pdf, .docx, .epub, and .html files are allowed.";
+        }
+    }
+
+    if (empty($errors)) {
+        $db = $container->get('db');
+        $conn = $db->getConnection();
+
+        // File handling
+        $upload_dir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+        $guid = bin2hex(random_bytes(16));
+        $file_name = $guid . '.' . $file_extension;
+        $file_path_absolute = $upload_dir . $file_name;
+        $file_path_relative = "/subsystem1/uploads/$file_name";
+        $original_filename = $file->getClientFilename();
+        $file->moveTo($file_path_absolute);
+        $size_kb = ceil($file->getSize() / 1024);
+
+        // Insert into documents
+        $file_type = $file_extension;
+        $stmt = $conn->prepare("INSERT INTO documents (guid, title, author, upload_date, file_path, file_type, size_kb, uploaded_by, updated, updated_by, isbn, original_filename) 
+            VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, NOW(), ?, ?, ?)");
+        $stmt->bind_param("sssssiiiss", $guid, $title, $author, $file_path_relative, $file_type, $size_kb, $user_id, $user_id, $isbn, $original_filename);
+        $stmt->execute();
+        $doc_id = $conn->insert_id;
+        $stmt->close();
+
+        // Extract text content
+        $text_content = '';
+        try {
+            switch ($file_type) {
+                case 'txt':
+                    $text_content = file_get_contents($file_path_absolute);
+                    break;
+        
+                case 'rtf':
+                    $phpWord = IOFactory::load($file_path_absolute, 'RTF');
+                    foreach ($phpWord->getSections() as $section) {
+                        foreach ($section->getElements() as $element) {
+                            if ($element instanceof \PhpOffice\PhpWord\Element\Text || $element instanceof \PhpOffice\PhpWord\Element\Link) {
+                                $text_content .= $element->getText() . "\n";
+                            } elseif ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
+                                foreach ($element->getElements() as $childElement) {
+                                    if ($childElement instanceof \PhpOffice\PhpWord\Element\Text || $childElement instanceof \PhpOffice\PhpWord\Element\Link) {
+                                        $text_content .= $childElement->getText() . "\n";
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+        
+                case 'pdf':
+                    $text_content = Pdf::getText($file_path_absolute);
+                    break;
+        
+                case 'docx':
+                    $phpWord = IOFactory::load($file_path_absolute, 'Word2007');
+                    foreach ($phpWord->getSections() as $section) {
+                        foreach ($section->getElements() as $element) {
+                            if ($element instanceof \PhpOffice\PhpWord\Element\Text || $element instanceof \PhpOffice\PhpWord\Element\Link) {
+                                $text_content .= $element->getText() . "\n";
+                            } elseif ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
+                                foreach ($element->getElements() as $childElement) {
+                                    if ($childElement instanceof \PhpOffice\PhpWord\Element\Text || $childElement instanceof \PhpOffice\PhpWord\Element\Link) {
+                                        $text_content .= $childElement->getText() . "\n";
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+        
+                case 'epub':
+                    $zip = new ZipArchive();
+                    if ($zip->open($file_path_absolute) === true) {
+                        for ($i = 0; $i < $zip->numFiles; $i++) {
+                            $name = $zip->getNameIndex($i);
+                            if (preg_match('/\.(xhtml|html)$/', $name)) {
+                                $content = $zip->getFromName($name);
+                                $text_content .= strip_tags($content) . "\n";
+                            }
+                        }
+                        $zip->close();
+                    }
+                    break;
+        
+                case 'html':
+                    $text_content = strip_tags(file_get_contents($file_path_absolute));
+                    break;
+        
+                default:
+                    logDebug("Unsupported file type for extraction: $file_type");
+                    break;
+            }
+        } catch (Exception $e) {
+            logDebug("Text extraction failed for $file_name: " . $e->getMessage());
+        }
+
+        if (!empty($text_content)) {
+            $stmt = $conn->prepare("INSERT INTO content (doc_id, text_content) VALUES (?, ?)");
+            $stmt->bind_param("is", $doc_id, $text_content);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        logDebug("Document uploaded: $title by user $user_id (original: $original_filename)");
+        return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
+    }
+
+    ob_start();
+    include __DIR__ . '/upload.php';
+    $html = ob_get_clean();
+    $response->getBody()->write($html);
+    return $response->withHeader('Content-Type', 'text/html');
 });
 
 // Logout

@@ -228,3 +228,18 @@
 [DEBUG] Home page accessed
 [DEBUG] Home page accessed
 [DEBUG] Home page accessed
+[DEBUG] Login POST data: Array
+(
+    [username] => kao
+    [password] => password
+)
+
+[DEBUG] User logged in successfully: kao
+[DEBUG] Home page accessed
+[DEBUG] Document uploaded: test ads doc by user 2
+[DEBUG] Home page accessed
+[DEBUG] Document uploaded: zesco app form signed by user 2
+[DEBUG] Home page accessed
+[DEBUG] Document uploaded: copy doc by user 2 (original: test ads doc.txt)
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
