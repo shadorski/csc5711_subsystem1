@@ -1,43 +1,49 @@
 <?php
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Server\RequestHandlerInterface as RequestHandler; // Added this
 use Slim\Factory\AppFactory;
-use DI\Container; // Use PHP-DI's container
+use DI\Container;
 
 require __DIR__ . '/vendor/autoload.php';
 session_start();
 
 // Simple logging function
 function logDebug($message) {
-    error_log("[DEBUG] " . $message . "\n", 3, __DIR__ . '/debug.log');
-    error_log("[DEBUG] " . $message);
+    error_log(date("Y-m-d H:m:s") . " [DEBUG] " . $message . "\n", 3, __DIR__ . '/debug.log');
 }
 
-// Debug Slim initialization
-if (!class_exists('Slim\Factory\AppFactory')) {
-    die("Slim not loaded. Check composer autoload.");
-}
-
-// Create container
-$container = new Container(); // Create a basic container
+// Create container and set it for Slim
+$container = new Container();
 AppFactory::setContainer($container);
 $app = AppFactory::create();
 $app->setBasePath('/subsystem1');
 
-// Verify container
-logDebug("Container after creation: " . get_class($app->getContainer()));
-if ($app->getContainer() === null) {
-    die("Error: Container is still null after forcing it.");
-}
-
 // Add DB to container
 $container->set('db', require __DIR__ . '/includes/db_connect.php');
+
+// Middleware to check DB connection
+$app->add(function (Request $request, RequestHandler $handler) use ($container) {
+    $db = $container->get('db');
+    if (!$db->isConnected()) {
+        logDebug("Database unavailable - showing error page");
+        $response = new \Slim\Psr7\Response();
+        $message = "Sorry, the system is currently offline due to a database issue. Please try again later.";
+        ob_start();
+        include __DIR__ . '/error.php';
+        $html = ob_get_clean();
+        $response->getBody()->write($html);
+        return $response->withStatus(503)->withHeader('Content-Type', 'text/html');
+    }
+    return $handler->handle($request);
+});
 
 // Middleware for error handling (dev mode)
 $app->addErrorMiddleware(true, true, true);
 
 // Home page
 $app->get('/', function (Request $request, Response $response) {
+    logDebug("Home page accessed");
     ob_start();
     if (isset($_SESSION['user_id'])) {
         include __DIR__ . '/dashboard.php';
@@ -74,13 +80,13 @@ $app->get('/signup', function (Request $request, Response $response) {
 });
 
 // Signup form submission (POST)
-$app->post('/signup', function (Request $request, Response $response) {
+$app->post('/signup', function (Request $request, Response $response) use ($container) {
     $count = 0;
     if (isset($_SESSION['user_id'])) {
         return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
     }
     $data = $request->getParsedBody();
-    logDebug("Signup POST data: " . print_r($data, true)); // Log the entire POST payload
+    logDebug("Signup POST data: " . print_r($data, true));
 
     $username = trim($data['username'] ?? '');
     $first_name = trim($data['first_name'] ?? '');
@@ -88,7 +94,7 @@ $app->post('/signup', function (Request $request, Response $response) {
     $gender = $data['gender'] ?? '';
     $password = $data['password'] ?? '';
 
-    logDebug("Parsed username: '$username'"); // Log the username specifically
+    logDebug("Parsed username: '$username'");
 
     $errors = [];
     if (strlen($username) < 3 || strlen($username) > 50 || !preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
@@ -108,27 +114,32 @@ $app->post('/signup', function (Request $request, Response $response) {
     }
 
     if (empty($errors)) {
-        $db = $this->get('db')->getConnection();
-        $stmt = $db->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $stmt->bind_result($count);
-        $stmt->fetch();
-        $stmt->close();
-
-        if ($count > 0) {
-            $errors[] = "Username already exists.";
+        $db = $container->get('db');
+        if (!$db->isConnected()) {
+            $errors[] = "Sorry, we’re having trouble connecting to the database. Please try again later.";
         } else {
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $db->prepare("INSERT INTO users (username, first_name, last_name, gender, password) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $username, $first_name, $last_name, $gender, $hashed_password);
-            if ($stmt->execute()) {
-                $_SESSION['user_id'] = $db->insert_id;
-                return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
-            } else {
-                $errors[] = "An error occurred during signup.";
-            }
+            $conn = $db->getConnection();
+            $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $stmt->bind_result($count);
+            $stmt->fetch();
             $stmt->close();
+
+            if ($count > 0) {
+                $errors[] = "Username already exists.";
+            } else {
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("INSERT INTO users (username, first_name, last_name, gender, password) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssss", $username, $first_name, $last_name, $gender, $hashed_password);
+                if ($stmt->execute()) {
+                    $_SESSION['user_id'] = $conn->insert_id;
+                    return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
+                } else {
+                    $errors[] = "An error occurred during signup. Please try again.";
+                }
+                $stmt->close();
+            }
         }
     }
 
@@ -142,14 +153,27 @@ $app->post('/signup', function (Request $request, Response $response) {
 // API: Check username
 $app->post('/api/user/check_username', function (Request $request, Response $response) use ($container) {
     $count = 0;
-    $data = json_decode($request->getBody()->getContents(), true);
+    $rawBody = $request->getBody()->getContents();
+    logDebug("Raw body: '$rawBody'");
+    $data = json_decode($rawBody, true);
+    logDebug("Parsed JSON data: " . print_r($data, true));
+
     $username = $data['username'] ?? '';
+    logDebug("Parsed username: '$username'");
+
     if (empty($username)) {
         $payload = json_encode(['error' => 'Username is required']);
         $response->getBody()->write($payload);
         return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
     }
+
     $db = $container->get('db');
+    if (!$db->isConnected()) {
+        $payload = json_encode(['error' => 'Database unavailable. Please try again later.']);
+        $response->getBody()->write($payload);
+        return $response->withStatus(503)->withHeader('Content-Type', 'application/json');
+    }
+
     $conn = $db->getConnection();
     $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
     $stmt->bind_param("s", $username);

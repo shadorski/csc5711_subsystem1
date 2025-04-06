@@ -1,8 +1,12 @@
-[DEBUG] App created: Slim\App
-[DEBUG] Container: null
-[DEBUG] Container after creation: DI\Container
-[DEBUG] Container after creation: DI\Container
-[DEBUG] Container after creation: DI\Container
-[DEBUG] Container after creation: DI\Container
-[DEBUG] Container after creation: DI\Container
-[DEBUG] Container after creation: DI\Container
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
+[DEBUG] Home page accessed
+[DEBUG] Database unavailable - showing error page
+[DEBUG] Database unavailable - showing error page
+[DEBUG] Database unavailable - showing error page
+[DEBUG] Database unavailable - showing error page
+[DEBUG] Database unavailable - showing error page
+[DEBUG] Database unavailable - showing error page
+[DEBUG] Database unavailable - showing error page
+2025-04-06 09:04:08[DEBUG] Database unavailable - showing error page
