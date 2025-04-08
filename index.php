@@ -12,7 +12,8 @@ session_start();
 
 // Simple logging function
 function logDebug($message) {
-    error_log("[DEBUG] " . $message . "\n", 3, __DIR__ . '/debug.log');
+    $date = date("Y-m-d h:i:s");
+    error_log($date . " [DEBUG] " . $message . "\n", 3, __DIR__ . '/debug.log');
 }
 
 // Create container and set it for Slim
@@ -44,14 +45,72 @@ $app->add(function (Request $request, RequestHandler $handler) use ($container) 
 $app->addErrorMiddleware(true, true, true);
 
 // Home page
-$app->get('/', function (Request $request, Response $response) {
+$app->get('/', function (Request $request, Response $response) use ($container) {
     logDebug("Home page accessed");
-    ob_start();
-    if (isset($_SESSION['user_id'])) {
-        include __DIR__ . '/dashboard.php';
-    } else {
+    
+    if (!isset($_SESSION['user_id'])) {
+        ob_start();
         include __DIR__ . '/home.php';
+        $html = ob_get_clean();
+        $response->getBody()->write($html);
+        return $response->withHeader('Content-Type', 'text/html');
     }
+
+    // Logged-in users get the dashboard
+    $user_id = $_SESSION['user_id'];
+    $db = $container->get('db');
+    $conn = $db->getConnection();
+
+    // Latest uploads by user
+    $stmt = $conn->prepare("SELECT title, file_path, upload_date FROM documents WHERE uploaded_by = ? ORDER BY upload_date DESC LIMIT 5");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $latest_by_user = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $result->free();
+
+    // Latest uploads by others
+    $stmt = $conn->prepare("SELECT title, file_path, upload_date FROM documents WHERE uploaded_by != ? ORDER BY upload_date DESC LIMIT 5");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $latest_by_others = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $result->free();
+
+    // Total documents by user
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM documents WHERE uploaded_by = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $total_by_user = $result->fetch_assoc()['total'];
+    $stmt->close();
+    $result->free();
+
+    // File type counts by user
+    $stmt = $conn->prepare("SELECT file_type, COUNT(*) as count FROM documents WHERE uploaded_by = ? GROUP BY file_type");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $file_type_counts = [];
+    while ($row = $result->fetch_assoc()) {
+        $file_type_counts[$row['file_type']] = $row['count'];
+    }
+    $stmt->close();
+    $result->free();
+
+    // Pass data to view
+    $data = [
+        'latest_by_user' => $latest_by_user,
+        'latest_by_others' => $latest_by_others,
+        'total_by_user' => $total_by_user,
+        'file_type_counts' => $file_type_counts
+    ];
+    
+    ob_start();
+    extract($data); // Ensure variables are in scope for dashboard.php
+    include __DIR__ . '/dashboard.php';
     $html = ob_get_clean();
     $response->getBody()->write($html);
     return $response->withHeader('Content-Type', 'text/html');
@@ -59,11 +118,51 @@ $app->get('/', function (Request $request, Response $response) {
 
 // Dashboard (protected route)
 $app->get('/dashboard', function (Request $request, Response $response) {
+    logDebug("Dashoard Page");
+    return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
+});
+
+// Search Route (GET /search)
+$app->get('/search', function (Request $request, Response $response) use ($container) {
     if (!isset($_SESSION['user_id'])) {
         return $response->withHeader('Location', '/subsystem1/login')->withStatus(302);
     }
+
+    $query = trim($request->getQueryParams()['q'] ?? '');
+    $user_id = $_SESSION['user_id'];
+    $db = $container->get('db');
+    $conn = $db->getConnection();
+
+    $results = [];
+    if (!empty($query)) {
+        $stmt = $conn->prepare("
+            SELECT DISTINCT d.title, d.file_path, d.upload_date, d.author 
+            FROM documents d
+            LEFT JOIN content c ON d.id = c.doc_id
+            WHERE d.title LIKE ? 
+               OR d.author LIKE ? 
+               OR c.text_content LIKE ?
+            ORDER BY d.upload_date DESC 
+        ");
+        $search_term = "%$query%";
+        $stmt->bind_param("sss", $search_term, $search_term, $search_term);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $results = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        $result->free();
+    }
+
+    // Pass data to search.php
+    $data = [
+        'query' => $query,
+        'results' => $results
+    ];
+    logDebug("Search data: " . json_encode($data));
+
     ob_start();
-    include __DIR__ . '/dashboard.php';
+    extract($data); // Make $query and $results available in search.php
+    include __DIR__ . '/search.php';
     $html = ob_get_clean();
     $response->getBody()->write($html);
     return $response->withHeader('Content-Type', 'text/html');
@@ -196,14 +295,14 @@ $app->post('/login', function (Request $request, Response $response) use ($conta
         if ($stmt->fetch() && password_verify($password, $hashed_password)) {
             $_SESSION['user_id'] = $user_id;
             $_SESSION['username'] = $username;
-
+            $stmt->close();
             //update last login
             $update_stmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
             $update_stmt->bind_param("i", $user_id);
             $update_stmt->execute();
-           
+            $update_stmt->close();
             logDebug("User logged in successfully: $username");
-            $stmt->close();
+            
             return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
         } else {
             $errors[] = "Invalid username or password.";
