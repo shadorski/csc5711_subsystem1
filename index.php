@@ -8,6 +8,7 @@ use Spatie\PdfToText\Pdf;
 use PhpOffice\PhpWord\IOFactory;
 
 require __DIR__ . '/vendor/autoload.php';
+
 session_start();
 
 // Simple logging function
@@ -46,6 +47,7 @@ $app->addErrorMiddleware(true, true, true);
 
 // Home page
 $app->get('/', function (Request $request, Response $response) use ($container) {
+    require_once __DIR__ . '/includes/db_helpers.php';
     logDebug("Home page accessed");
     
     if (!isset($_SESSION['user_id'])) {
@@ -56,60 +58,20 @@ $app->get('/', function (Request $request, Response $response) use ($container) 
         return $response->withHeader('Content-Type', 'text/html');
     }
 
-    // Logged-in users get the dashboard
     $user_id = $_SESSION['user_id'];
     $db = $container->get('db');
     $conn = $db->getConnection();
 
-    // Latest uploads by user
-    $stmt = $conn->prepare("SELECT title, file_path, upload_date FROM documents WHERE uploaded_by = ? ORDER BY upload_date DESC LIMIT 5");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $latest_by_user = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-    $result->free();
-
-    // Latest uploads by others
-    $stmt = $conn->prepare("SELECT title, file_path, upload_date FROM documents WHERE uploaded_by != ? ORDER BY upload_date DESC LIMIT 5");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $latest_by_others = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-    $result->free();
-
-    // Total documents by user
-    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM documents WHERE uploaded_by = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $total_by_user = $result->fetch_assoc()['total'];
-    $stmt->close();
-    $result->free();
-
-    // File type counts by user
-    $stmt = $conn->prepare("SELECT file_type, COUNT(*) as count FROM documents WHERE uploaded_by = ? GROUP BY file_type");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $file_type_counts = [];
-    while ($row = $result->fetch_assoc()) {
-        $file_type_counts[$row['file_type']] = $row['count'];
-    }
-    $stmt->close();
-    $result->free();
-
-    // Pass data to view
     $data = [
-        'latest_by_user' => $latest_by_user,
-        'latest_by_others' => $latest_by_others,
-        'total_by_user' => $total_by_user,
-        'file_type_counts' => $file_type_counts
+        'latest_by_user' => get_latest_documents($conn, $user_id, true),
+        'latest_by_others' => get_latest_documents($conn, $user_id, false),
+        'total_by_user' => $conn->query("SELECT COUNT(*) FROM documents WHERE uploaded_by = $user_id")->fetch_row()[0],
+        'file_type_counts' => $conn->query("SELECT file_type, COUNT(*) as count FROM documents WHERE uploaded_by = $user_id GROUP BY file_type")->fetch_all(MYSQLI_ASSOC)
     ];
-    
+    logDebug("Dashboard data: " . json_encode($data));
+
     ob_start();
-    extract($data); // Ensure variables are in scope for dashboard.php
+    extract($data);
     include __DIR__ . '/dashboard.php';
     $html = ob_get_clean();
     $response->getBody()->write($html);
@@ -124,6 +86,7 @@ $app->get('/dashboard', function (Request $request, Response $response) {
 
 // Search Route (GET /search)
 $app->get('/search', function (Request $request, Response $response) use ($container) {
+    require_once __DIR__ . '/includes/db_helpers.php';
     if (!isset($_SESSION['user_id'])) {
         return $response->withHeader('Location', '/subsystem1/login')->withStatus(302);
     }
@@ -133,35 +96,12 @@ $app->get('/search', function (Request $request, Response $response) use ($conta
     $db = $container->get('db');
     $conn = $db->getConnection();
 
-    $results = [];
-    if (!empty($query)) {
-        $stmt = $conn->prepare("
-            SELECT DISTINCT d.title, d.file_path, d.upload_date, d.author 
-            FROM documents d
-            LEFT JOIN content c ON d.id = c.doc_id
-            WHERE d.title LIKE ? 
-               OR d.author LIKE ? 
-               OR c.text_content LIKE ?
-            ORDER BY d.upload_date DESC 
-        ");
-        $search_term = "%$query%";
-        $stmt->bind_param("sss", $search_term, $search_term, $search_term);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $results = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-        $result->free();
-    }
-
-    // Pass data to search.php
-    $data = [
-        'query' => $query,
-        'results' => $results
-    ];
+    $results = !empty($query) ? search_documents($conn, $query) : [];
+    $data = ['query' => $query, 'results' => $results];
     logDebug("Search data: " . json_encode($data));
 
     ob_start();
-    extract($data); // Make $query and $results available in search.php
+    extract($data);
     include __DIR__ . '/search.php';
     $html = ob_get_clean();
     $response->getBody()->write($html);
@@ -235,6 +175,7 @@ $app->post('/signup', function (Request $request, Response $response) use ($cont
                 $stmt->bind_param("sssss", $username, $first_name, $last_name, $gender, $hashed_password);
                 if ($stmt->execute()) {
                     $_SESSION['user_id'] = $conn->insert_id;
+                    $_SESSION['username'] = $username;
                     return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
                 } else {
                     $errors[] = "An error occurred during signup. Please try again.";
@@ -318,43 +259,6 @@ $app->post('/login', function (Request $request, Response $response) use ($conta
     return $response->withHeader('Content-Type', 'text/html');
 });
 
-// API: Check username
-$app->post('/api/user/check_username', function (Request $request, Response $response) use ($container) {
-    $count = 0;
-    $rawBody = $request->getBody()->getContents();
-    logDebug("Raw body: '$rawBody'");
-    $data = json_decode($rawBody, true);
-    logDebug("Parsed JSON data: " . print_r($data, true));
-
-    $username = $data['username'] ?? '';
-    logDebug("Parsed username: '$username'");
-
-    if (empty($username)) {
-        $payload = json_encode(['error' => 'Username is required']);
-        $response->getBody()->write($payload);
-        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
-    }
-
-    $db = $container->get('db');
-    if (!$db->isConnected()) {
-        $payload = json_encode(['error' => 'Database unavailable. Please try again later.']);
-        $response->getBody()->write($payload);
-        return $response->withStatus(503)->withHeader('Content-Type', 'application/json');
-    }
-
-    $conn = $db->getConnection();
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $stmt->bind_result($count);
-    $stmt->fetch();
-    $stmt->close();
-
-    $payload = json_encode(['exists' => $count > 0]);
-    $response->getBody()->write($payload);
-    return $response->withHeader('Content-Type', 'application/json');
-});
-
 // Upload page (GET)
 $app->get('/upload', function (Request $request, Response $response) {
     if (!isset($_SESSION['user_id'])) {
@@ -366,7 +270,6 @@ $app->get('/upload', function (Request $request, Response $response) {
     $response->getBody()->write($html);
     return $response->withHeader('Content-Type', 'text/html');
 });
-
 
 // Upload form submission (POST)
 $app->post('/upload', function (Request $request, Response $response) use ($container) {
@@ -518,6 +421,129 @@ $app->get('/logout', function (Request $request, Response $response) {
     return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
 });
 
+// API Group
+$app->group('/api', function ($app) use ($container) {
+    require_once __DIR__ . '/includes/db_helpers.php';
+
+    // Check Username (POST /api/user/check_username)
+    $app->post('/user/check_username', function (Request $request, Response $response) use ($container) {
+        $count = 0;
+        $rawBody = $request->getBody()->getContents();
+        logDebug("Raw body: '$rawBody'");
+        $data = json_decode($rawBody, true);
+        logDebug("Parsed JSON data: " . print_r($data, true));
+
+        $username = $data['username'] ?? '';
+        logDebug("Parsed username: '$username'");
+
+        if (empty($username)) {
+            $payload = json_encode(['error' => 'Username is required']);
+            $response->getBody()->write($payload);
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        $db = $container->get('db');
+        if (!$db->isConnected()) {
+            $payload = json_encode(['error' => 'Database unavailable. Please try again later.']);
+            $response->getBody()->write($payload);
+            return $response->withStatus(503)->withHeader('Content-Type', 'application/json');
+        }
+
+        $conn = $db->getConnection();
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $stmt->bind_result($count);
+        $stmt->fetch();
+        $stmt->close();
+
+        $payload = json_encode(['exists' => $count > 0]);
+        $response->getBody()->write($payload);
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
+    // Add Document (POST /api/documents)
+    $app->post('/documents', function (Request $request, Response $response) use ($container) {
+        if (!isset($_SESSION['user_id'])) {
+            $body = json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            $response->getBody()->write($body);
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
+
+        $user_id = $_SESSION['user_id'];
+        $data = $request->getParsedBody();
+        $file = $request->getUploadedFiles()['file'] ?? null;
+
+        $title = trim($data['title'] ?? '');
+        $author = trim($data['author'] ?? '');
+        $isbn = trim($data['isbn'] ?? '');
+
+        if (empty($title) || empty($author) || empty($isbn) || !$file || $file->getError() !== UPLOAD_ERR_OK) {
+            $body = json_encode(['status' => 'error', 'message' => 'Invalid input']);
+            $response->getBody()->write($body);
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+
+        $db = $container->get('db');
+        $conn = $db->getConnection();
+        $upload_dir = __DIR__ . '/uploads/';
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+
+        $file_extension = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
+        $file_type = $file_extension;
+        $file_name = bin2hex(random_bytes(16)) . '.' . $file_type;
+        $file_path = $upload_dir . $file_name;
+        $file->moveTo($file_path);
+        $size_kb = ceil($file->getSize() / 1024);
+
+        $doc_id = 0;
+        if (add_document($conn, $user_id, $title, $author, $isbn, $file_path, $file_type, $size_kb, $file->getClientFilename(), $doc_id)) {
+            $body = json_encode(['status' => 'success', 'data' => ['id' => $doc_id, 'title' => $title], 'message' => 'Document added']);
+            $response->getBody()->write($body);
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        $body = json_encode(['status' => 'error', 'message' => 'Failed to add document']);
+        $response->getBody()->write($body);
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    });
+
+    // Retrieve Documents (GET /api/documents)
+    $app->get('/documents', function (Request $request, Response $response) use ($container) {
+        if (!isset($_SESSION['user_id'])) {
+            $body = json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            $response->getBody()->write($body);
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
+
+        $user_id = $_SESSION['user_id'];
+        $db = $container->get('db');
+        $conn = $db->getConnection();
+
+        $latest = get_latest_documents($conn, $user_id, true);
+        $body = json_encode(['status' => 'success', 'data' => $latest]);
+        $response->getBody()->write($body);
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    });
+
+    // Search Documents (GET /api/search)
+    $app->get('/search', function (Request $request, Response $response) use ($container) {
+        if (!isset($_SESSION['user_id'])) {
+            $body = json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            $response->getBody()->write($body);
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
+
+        $query = trim($request->getQueryParams()['q'] ?? '');
+        $db = $container->get('db');
+        $conn = $db->getConnection();
+
+        $results = !empty($query) ? search_documents($conn, $query) : [];
+        $body = json_encode(['status' => 'success', 'data' => $results]);
+        $response->getBody()->write($body);
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    });
+});
+
 // 404 Handler
 $app->map(['GET', 'POST'], '/{routes:.+}', function (Request $request, Response $response) {
     ob_start();
@@ -526,6 +552,8 @@ $app->map(['GET', 'POST'], '/{routes:.+}', function (Request $request, Response 
     $response->getBody()->write($html);
     return $response->withStatus(404)->withHeader('Content-Type', 'text/html');
 });
+
+
 
 // Run the app
 $app->run();

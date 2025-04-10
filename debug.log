@@ -294,3 +294,116 @@
 2025-04-08 08:41:57 [DEBUG] Home page accessed
 2025-04-08 08:42:04 [DEBUG] Search data: {"query":"tmx","results":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"}]}
 2025-04-08 08:42:04 [DEBUG] Search page loaded
+2025-04-10 11:00:26 [DEBUG] Home page accessed
+2025-04-10 11:04:41 [DEBUG] Raw body: '{"username":"kao"}'
+2025-04-10 11:04:41 [DEBUG] Parsed JSON data: Array
+(
+    [username] => kao
+)
+
+2025-04-10 11:04:41 [DEBUG] Parsed username: 'kao'
+2025-04-10 11:04:44 [DEBUG] Raw body: '{"username":"kaom"}'
+2025-04-10 11:04:44 [DEBUG] Parsed JSON data: Array
+(
+    [username] => kaom
+)
+
+2025-04-10 11:04:44 [DEBUG] Parsed username: 'kaom'
+2025-04-10 11:04:44 [DEBUG] Raw body: '{"username":"kaoma"}'
+2025-04-10 11:04:44 [DEBUG] Parsed JSON data: Array
+(
+    [username] => kaoma
+)
+
+2025-04-10 11:04:44 [DEBUG] Parsed username: 'kaoma'
+2025-04-10 11:04:48 [DEBUG] Raw body: '{"username":"kaomac"}'
+2025-04-10 11:04:48 [DEBUG] Parsed JSON data: Array
+(
+    [username] => kaomac
+)
+
+2025-04-10 11:04:48 [DEBUG] Parsed username: 'kaomac'
+2025-04-10 11:04:50 [DEBUG] Raw body: '{"username":"zem"}'
+2025-04-10 11:04:50 [DEBUG] Parsed JSON data: Array
+(
+    [username] => zem
+)
+
+2025-04-10 11:04:50 [DEBUG] Parsed username: 'zem'
+2025-04-10 11:04:51 [DEBUG] Raw body: '{"username":"zemb"}'
+2025-04-10 11:04:51 [DEBUG] Parsed JSON data: Array
+(
+    [username] => zemb
+)
+
+2025-04-10 11:04:51 [DEBUG] Parsed username: 'zemb'
+2025-04-10 11:04:51 [DEBUG] Raw body: '{"username":"zemba"}'
+2025-04-10 11:04:51 [DEBUG] Parsed JSON data: Array
+(
+    [username] => zemba
+)
+
+2025-04-10 11:04:51 [DEBUG] Parsed username: 'zemba'
+2025-04-10 11:05:06 [DEBUG] Signup POST data: Array
+(
+    [username] => zemba
+    [first_name] => zemba
+    [last_name] => chishimba
+    [gender] => male
+    [password] => newpassword
+)
+
+2025-04-10 11:05:06 [DEBUG] Parsed username: 'zemba'
+2025-04-10 11:05:06 [DEBUG] Home page accessed
+2025-04-10 11:05:06 [DEBUG] Dashboard data: {"latest_by_user":[],"latest_by_others":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"total_by_user":"0","file_type_counts":[]}
+2025-04-10 11:05:20 [DEBUG] Home page accessed
+2025-04-10 11:05:20 [DEBUG] Dashboard data: {"latest_by_user":[],"latest_by_others":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"total_by_user":"0","file_type_counts":[]}
+2025-04-10 11:05:31 [DEBUG] Home page accessed
+2025-04-10 11:05:39 [DEBUG] Login POST data: Array
+(
+    [username] => kao
+    [password] => password
+)
+
+2025-04-10 11:05:39 [DEBUG] User logged in successfully: kao
+2025-04-10 11:05:39 [DEBUG] Home page accessed
+2025-04-10 11:05:39 [DEBUG] Dashboard data: {"latest_by_user":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"latest_by_others":[],"total_by_user":"5","file_type_counts":[{"file_type":"docx","count":"2"},{"file_type":"pdf","count":"1"},{"file_type":"txt","count":"2"}]}
+2025-04-10 11:08:06 [DEBUG] Home page accessed
+2025-04-10 11:08:14 [DEBUG] Login POST data: Array
+(
+    [username] => zemba
+    [password] => newpassword
+)
+
+2025-04-10 11:08:14 [DEBUG] User logged in successfully: zemba
+2025-04-10 11:08:14 [DEBUG] Home page accessed
+2025-04-10 11:08:14 [DEBUG] Dashboard data: {"latest_by_user":[],"latest_by_others":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"total_by_user":"0","file_type_counts":[]}
+2025-04-10 11:10:21 [DEBUG] Home page accessed
+2025-04-10 11:10:34 [DEBUG] Login POST data: Array
+(
+    [username] => zemba
+    [password] => newpassword
+)
+
+2025-04-10 11:10:34 [DEBUG] User logged in successfully: zemba
+2025-04-10 11:10:34 [DEBUG] Home page accessed
+2025-04-10 11:10:34 [DEBUG] Dashboard data: {"latest_by_user":[],"latest_by_others":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"total_by_user":"0","file_type_counts":[]}
+2025-04-10 11:10:40 [DEBUG] Search data: {"query":"hire","results":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"}]}
+2025-04-10 11:10:40 [DEBUG] Search page loaded
+2025-04-10 11:10:42 [DEBUG] Home page accessed
+2025-04-10 11:10:42 [DEBUG] Dashboard data: {"latest_by_user":[],"latest_by_others":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"total_by_user":"0","file_type_counts":[]}
+2025-04-10 11:11:21 [DEBUG] Document uploaded: arthur by user 3 (original: TMX Contract Draft.docx)
+2025-04-10 11:11:21 [DEBUG] Home page accessed
+2025-04-10 11:11:21 [DEBUG] Dashboard data: {"latest_by_user":[{"title":"arthur","file_path":"\/subsystem1\/uploads\/928ed1c39467563ef1af4f6f4688ab17.docx","upload_date":"2025-04-10 11:11:18","author":"arthur"}],"latest_by_others":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"total_by_user":"1","file_type_counts":[{"file_type":"docx","count":"1"}]}
+2025-04-10 11:19:16 [DEBUG] Home page accessed
+2025-04-10 11:19:16 [DEBUG] Dashboard data: {"latest_by_user":[{"title":"arthur","file_path":"\/subsystem1\/uploads\/928ed1c39467563ef1af4f6f4688ab17.docx","upload_date":"2025-04-10 11:11:18","author":"arthur"}],"latest_by_others":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"total_by_user":"1","file_type_counts":[{"file_type":"docx","count":"1"}]}
+2025-04-10 11:19:22 [DEBUG] Home page accessed
+2025-04-10 11:19:33 [DEBUG] Login POST data: Array
+(
+    [username] => kao
+    [password] => password
+)
+
+2025-04-10 11:19:33 [DEBUG] User logged in successfully: kao
+2025-04-10 11:19:33 [DEBUG] Home page accessed
+2025-04-10 11:19:33 [DEBUG] Dashboard data: {"latest_by_user":[{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/a3ea1396663fc72b8d36db93b0bc8816.docx","upload_date":"2025-04-06 21:15:01","author":"kaoam"},{"title":"tmx contract","file_path":"\/subsystem1\/uploads\/537d4fae73f2d0395db15787bb4a68ee.docx","upload_date":"2025-04-06 20:58:36","author":"kaoam"},{"title":"copy doc","file_path":"\/subsystem1\/uploads\/21181dd8058f3a29e835f6280c412cfc.txt","upload_date":"2025-04-06 15:32:59","author":"Kaoma"},{"title":"zesco app form signed","file_path":"\/subsystem1\/uploads\/a4a88ba7fbf2e4d395e7a3d7d2d784cc.pdf","upload_date":"2025-04-06 15:20:28","author":"kaoma"},{"title":"test ads doc","file_path":"\/subsystem1\/uploads\/578ae99c7d2babbb7e5b3f3861737e72.txt","upload_date":"2025-04-06 15:10:57","author":"test user"}],"latest_by_others":[{"title":"arthur","file_path":"\/subsystem1\/uploads\/928ed1c39467563ef1af4f6f4688ab17.docx","upload_date":"2025-04-10 11:11:18","author":"arthur"}],"total_by_user":"5","file_type_counts":[{"file_type":"docx","count":"2"},{"file_type":"pdf","count":"1"},{"file_type":"txt","count":"2"}]}

@@ -128,7 +128,7 @@ $file_type_counts = $data['file_type_counts'] ?? [];
                         <div class="card dashboard-card">
                             <div class="card-body text-center">
                                 <h5 class="card-title">Your Total Documents</h5>
-                                <p class="display-4"><?php echo $total_by_user; ?></p>
+                                <p class="display-4"><?php echo htmlspecialchars($total_by_user); ?></p>
                             </div>
                         </div>
                     </div>
@@ -142,10 +142,10 @@ $file_type_counts = $data['file_type_counts'] ?? [];
                                     <?php if (empty($file_type_counts)): ?>
                                         <li class="list-group-item text-muted">No data available.</li>
                                     <?php else: ?>
-                                        <?php foreach ($file_type_counts as $type => $count): ?>
+                                        <?php foreach ($file_type_counts as $type): ?>
                                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <?php echo htmlspecialchars(strtoupper($type)); ?>
-                                                <span class="badge bg-primary rounded-pill"><?php echo $count; ?></span>
+                                                <?php echo htmlspecialchars(strtoupper($type['file_type'])); ?>
+                                                <span class="badge bg-primary rounded-pill"><?php echo htmlspecialchars($type['count']); ?></span>
                                             </li>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
