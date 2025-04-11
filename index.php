@@ -421,6 +421,8 @@ $app->get('/logout', function (Request $request, Response $response) {
     return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
 });
 
+
+
 // Middleware to validate API key
 $apiKeyMiddleware = function (Request $request, RequestHandler $handler) use ($container) {
     $apiKey = $request->getHeaderLine('X-API-Key');
@@ -509,6 +511,85 @@ $rateLimitMiddleware = function (Request $request, RequestHandler $handler) use 
 
     return $handler->handle($request);
 };
+
+// Public route: GET /api/documents (no API key required)
+$app->get('/api/documents', function (Request $request, Response $response) use ($container) {
+    $db = $container->get('db');
+    $conn = $db->getConnection();
+
+    $docs = get_all_documents($conn);
+    $body = json_encode($docs);
+    $response->getBody()->write($body);
+    return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+});
+
+// Public route: GET /api/documents/<doc_id> (returns document metadata)
+$app->get('/api/documents/{doc_id}', function (Request $request, Response $response, array $args) use ($container) {
+    $doc_id = (int) $args['doc_id']; // Cast to integer for safety
+    $db = $container->get('db');
+    $conn = $db->getConnection();
+
+    $stmt = $conn->prepare("
+        SELECT id as doc_id, title, file_path, upload_date, author, original_filename as filename
+        FROM documents 
+        WHERE id = ?
+    ");
+    if (!$stmt) {
+        $body = json_encode(['status' => 'error', 'message' => 'Database error']);
+        $response->getBody()->write($body);
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    }
+    $stmt->bind_param("i", $doc_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $document = $result->fetch_assoc();
+    $stmt->close();
+    $result->free();
+
+    if (!$document) {
+        $body = json_encode(['status' => 'error', 'message' => 'Document not found']);
+        $response->getBody()->write($body);
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    }
+
+    $body = json_encode($document);
+    $response->getBody()->write($body);
+    return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+});
+
+// Public route: GET /api/documents/<doc_id>/content (returns document content)
+$app->get('/api/documents/{doc_id}/content', function (Request $request, Response $response, array $args) use ($container) {
+    $doc_id = (int) $args['doc_id']; // Cast to integer for safety
+    $db = $container->get('db');
+    $conn = $db->getConnection();
+
+    $stmt = $conn->prepare("
+        SELECT text_content 
+        FROM content 
+        WHERE doc_id = ?
+    ");
+    if (!$stmt) {
+        $body = json_encode(['status' => 'error', 'message' => 'Database error']);
+        $response->getBody()->write($body);
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+    }
+    $stmt->bind_param("i", $doc_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $content = $result->fetch_assoc();
+    $stmt->close();
+    $result->free();
+
+    if (!$content || empty($content['text_content'])) {
+        $body = json_encode(['status' => 'error', 'message' => 'Content not found']);
+        $response->getBody()->write($body);
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    }
+
+    $body = json_encode(['text_content' => $content['text_content']]);
+    $response->getBody()->write($body);
+    return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+});
 
 // API Group
 $app->group('/api', function ($app) use ($container) {
@@ -634,18 +715,6 @@ $app->group('/api', function ($app) use ($container) {
         return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
     });
 
-    // Retrieve Documents (GET /api/documents)
-    $app->get('/documents', function (Request $request, Response $response) use ($container) {
-        $user_id = $request->getAttribute('user_id');
-        $db = $container->get('db');
-        $conn = $db->getConnection();
-
-        $latest = get_latest_documents($conn, $user_id, true);
-        $body = json_encode(['status' => 'success', 'data' => $latest]);
-        $response->getBody()->write($body);
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-    });
-
     // Search Documents (GET /api/search)
     $app->get('/search', function (Request $request, Response $response) use ($container) {
         $query = trim($request->getQueryParams()['q'] ?? '');
@@ -658,6 +727,7 @@ $app->group('/api', function ($app) use ($container) {
         $response->getBody()->write($body);
         return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
     });
+
 })->add($rateLimitMiddleware)->add($apiKeyMiddleware);
 
 // 404 Handler

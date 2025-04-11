@@ -2,7 +2,7 @@
 function search_documents($conn, $query, $limit = 10) {
     //logDebug('Search Query : '.$query);
     $stmt = $conn->prepare("
-    SELECT DISTINCT d.title, d.file_path, d.upload_date, d.author 
+    SELECT DISTINCT d.id as doc_id, d.title, d.file_path, d.upload_date, d.author, d.original_filename as filename
     FROM documents d
     LEFT JOIN content c ON d.id = c.doc_id
     WHERE d.title LIKE ? 
@@ -59,5 +59,24 @@ function add_document_content($conn, $doc_id, $text_content) {
     $success = $stmt->execute();
     $stmt->close();
     return $success;
+}
+
+function get_all_documents($conn) {
+    $stmt = $conn->prepare("
+        SELECT title, file_path, upload_date, author, id as doc_id, original_filename as filename
+        FROM documents 
+        ORDER BY upload_date DESC
+    ");
+    if (!$stmt) {
+        // Log error if needed
+        error_log('Prepare failed: ' . $conn->error);
+        return [];
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $results = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $result->free();
+    return $results;
 }
 ?>
