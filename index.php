@@ -80,7 +80,7 @@ $app->get('/', function (Request $request, Response $response) use ($container) 
 
 // Dashboard (protected route)
 $app->get('/dashboard', function (Request $request, Response $response) {
-    logDebug("Dashoard Page");
+    logDebug("Dashboard Page");
     return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
 });
 
@@ -421,13 +421,146 @@ $app->get('/logout', function (Request $request, Response $response) {
     return $response->withHeader('Location', '/subsystem1/')->withStatus(302);
 });
 
+// Middleware to validate API key
+$apiKeyMiddleware = function (Request $request, RequestHandler $handler) use ($container) {
+    $apiKey = $request->getHeaderLine('X-API-Key');
+    if (empty($apiKey)) {
+        $payload = json_encode(['error' => 'API key is required']);
+        $response = new \Slim\Psr7\Response();
+        $response->getBody()->write($payload);
+        return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+    }
+
+    $db = $container->get('db');
+    $conn = $db->getConnection();
+    $stmt = $conn->prepare("SELECT id, user_id, is_active FROM api_keys WHERE api_key = ?");
+    $stmt->bind_param("s", $apiKey);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $keyData = $result->fetch_assoc();
+    $stmt->close();
+
+    if (!$keyData || !$keyData['is_active']) {
+        $payload = json_encode(['error' => 'Invalid or inactive API key']);
+        $response = new \Slim\Psr7\Response();
+        $response->getBody()->write($payload);
+        return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+    }
+
+    // Store user_id and api_key in request attributes
+    $request = $request->withAttribute('api_key', $apiKey);
+    $request = $request->withAttribute('user_id', $keyData['user_id']);
+
+    // Update last_used_at
+    $stmt = $conn->prepare("UPDATE api_keys SET last_used_at = NOW() WHERE api_key = ?");
+    $stmt->bind_param("s", $apiKey);
+    $stmt->execute();
+    $stmt->close();
+
+    return $handler->handle($request);
+};
+
+// Middleware for rate limiting
+$rateLimitMiddleware = function (Request $request, RequestHandler $handler) use ($container) {
+    $apiKey = $request->getAttribute('api_key');
+    $db = $container->get('db');
+    $conn = $db->getConnection();
+
+    // Define rate limit: 100 requests per hour
+    $maxRequests = 100;
+    $windowSeconds = 3600; // 1 hour
+
+    // Get current window start (rounded to the hour) for insertion
+    $windowStart = date('Y-m-d H:00:00');
+
+    // Check existing request count, truncating window_start to hour for comparison
+    $stmt = $conn->prepare("SELECT request_count FROM api_request_limits WHERE api_key = ? AND DATE_FORMAT(window_start, '%Y-%m-%d %H:00:00') = ?");
+    $stmt->bind_param("ss", $apiKey, $windowStart);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $requestCount = $row ? (int)$row['request_count'] : 0;
+    $stmt->close();
+
+    if ($requestCount >= $maxRequests) {
+        $payload = json_encode(['error' => 'Rate limit exceeded. Try again later.']);
+        $response = new \Slim\Psr7\Response();
+        $response->getBody()->write($payload);
+        return $response->withStatus(429)->withHeader('Content-Type', 'application/json');
+    }
+
+    // Increment request count
+    if ($row) {
+        $stmt = $conn->prepare("UPDATE api_request_limits SET request_count = request_count + 1 WHERE api_key = ? AND DATE_FORMAT(window_start, '%Y-%m-%d %H:00:00') = ?");
+        $stmt->bind_param("ss", $apiKey, $windowStart);
+        $stmt->execute();
+        $stmt->close();
+    } else {
+        $stmt = $conn->prepare("INSERT INTO api_request_limits (api_key, request_count, window_start) VALUES (?, 1, ?)");
+        $stmt->bind_param("ss", $apiKey, $windowStart);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    // Optional: Clean up old rows (older than 24 hours) to prevent table growth
+    $stmt = $conn->prepare("DELETE FROM api_request_limits WHERE window_start < NOW() - INTERVAL 24 HOUR");
+    $stmt->execute();
+    $stmt->close();
+
+    return $handler->handle($request);
+};
+
 // API Group
 $app->group('/api', function ($app) use ($container) {
     require_once __DIR__ . '/includes/db_helpers.php';
 
+    // Generate API key (POST /api/key/generate)
+    $app->post('/key/generate', function (Request $request, Response $response) use ($container) {
+        if (!isset($_SESSION['user_id'])) {
+            $payload = json_encode(['error' => 'Unauthorized']);
+            $response->getBody()->write($payload);
+            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+        }
+
+        $user_id = $_SESSION['user_id'];
+        $db = $container->get('db');
+        $conn = $db->getConnection();
+
+        // Generate a unique API key
+        $apiKey = bin2hex(random_bytes(32)); // 64-character key
+        $activeKeys = 0;
+        // Check if user already has an active key
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM api_keys WHERE user_id = ? AND is_active = 1");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stmt->bind_result($activeKeys);
+        $stmt->fetch();
+        $stmt->close();
+
+        if ($activeKeys > 0) {
+            $payload = json_encode(['error' => 'You already have an active API key']);
+            $response->getBody()->write($payload);
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        // Insert new API key
+        $stmt = $conn->prepare("INSERT INTO api_keys (user_id, api_key, is_active) VALUES (?, ?, 1)");
+        $stmt->bind_param("is", $user_id, $apiKey);
+        if ($stmt->execute()) {
+            $payload = json_encode(['status' => 'success', 'api_key' => $apiKey]);
+            $response->getBody()->write($payload);
+            $stmt->close();
+            return $response->withStatus(200)->withHeader('Content-Type', 'application/json');
+        }
+
+        $payload = json_encode(['error' => 'Failed to generate API key']);
+        $response->getBody()->write($payload);
+        $stmt->close();
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    });
+
     // Check Username (POST /api/user/check_username)
     $app->post('/user/check_username', function (Request $request, Response $response) use ($container) {
-        $count = 0;
         $rawBody = $request->getBody()->getContents();
         logDebug("Raw body: '$rawBody'");
         $data = json_decode($rawBody, true);
@@ -448,7 +581,7 @@ $app->group('/api', function ($app) use ($container) {
             $response->getBody()->write($payload);
             return $response->withStatus(503)->withHeader('Content-Type', 'application/json');
         }
-
+        $count = 0;
         $conn = $db->getConnection();
         $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
         $stmt->bind_param("s", $username);
@@ -464,13 +597,7 @@ $app->group('/api', function ($app) use ($container) {
 
     // Add Document (POST /api/documents)
     $app->post('/documents', function (Request $request, Response $response) use ($container) {
-        if (!isset($_SESSION['user_id'])) {
-            $body = json_encode(['status' => 'error', 'message' => 'Unauthorized']);
-            $response->getBody()->write($body);
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
-        }
-
-        $user_id = $_SESSION['user_id'];
+        $user_id = $request->getAttribute('user_id');
         $data = $request->getParsedBody();
         $file = $request->getUploadedFiles()['file'] ?? null;
 
@@ -509,13 +636,7 @@ $app->group('/api', function ($app) use ($container) {
 
     // Retrieve Documents (GET /api/documents)
     $app->get('/documents', function (Request $request, Response $response) use ($container) {
-        if (!isset($_SESSION['user_id'])) {
-            $body = json_encode(['status' => 'error', 'message' => 'Unauthorized']);
-            $response->getBody()->write($body);
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
-        }
-
-        $user_id = $_SESSION['user_id'];
+        $user_id = $request->getAttribute('user_id');
         $db = $container->get('db');
         $conn = $db->getConnection();
 
@@ -527,22 +648,17 @@ $app->group('/api', function ($app) use ($container) {
 
     // Search Documents (GET /api/search)
     $app->get('/search', function (Request $request, Response $response) use ($container) {
-        if (!isset($_SESSION['user_id'])) {
-            $body = json_encode(['status' => 'error', 'message' => 'Unauthorized']);
-            $response->getBody()->write($body);
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
-        }
-
         $query = trim($request->getQueryParams()['q'] ?? '');
         $db = $container->get('db');
         $conn = $db->getConnection();
-
+        
         $results = !empty($query) ? search_documents($conn, $query) : [];
+        
         $body = json_encode(['status' => 'success', 'data' => $results]);
         $response->getBody()->write($body);
         return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
     });
-});
+})->add($rateLimitMiddleware)->add($apiKeyMiddleware);
 
 // 404 Handler
 $app->map(['GET', 'POST'], '/{routes:.+}', function (Request $request, Response $response) {
@@ -552,8 +668,6 @@ $app->map(['GET', 'POST'], '/{routes:.+}', function (Request $request, Response 
     $response->getBody()->write($html);
     return $response->withStatus(404)->withHeader('Content-Type', 'text/html');
 });
-
-
 
 // Run the app
 $app->run();

@@ -1,5 +1,6 @@
 <?php
 function search_documents($conn, $query, $limit = 10) {
+    //logDebug('Search Query : '.$query);
     $stmt = $conn->prepare("
     SELECT DISTINCT d.title, d.file_path, d.upload_date, d.author 
     FROM documents d
@@ -14,6 +15,7 @@ function search_documents($conn, $query, $limit = 10) {
     $stmt->execute();
     $result = $stmt->get_result();
     $results = $result->fetch_all(MYSQLI_ASSOC);
+    //logDebug('Results : '.$results);
     $stmt->close();
     $result->free();
     return $results;
