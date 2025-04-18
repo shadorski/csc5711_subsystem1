@@ -591,6 +591,19 @@ $app->get('/api/documents/{doc_id}/content', function (Request $request, Respons
     return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
 });
 
+// Search Documents (GET /api/search)
+$app->get('/api/search', function (Request $request, Response $response) use ($container) {
+    $query = trim($request->getQueryParams()['q'] ?? '');
+    $db = $container->get('db');
+    $conn = $db->getConnection();
+    
+    $results = !empty($query) ? search_documents($conn, $query) : [];
+    
+    $body = json_encode($results);
+    $response->getBody()->write($body);
+    return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+});
+
 // API Group
 $app->group('/api', function ($app) use ($container) {
     require_once __DIR__ . '/includes/db_helpers.php';
@@ -713,19 +726,6 @@ $app->group('/api', function ($app) use ($container) {
         $body = json_encode(['status' => 'error', 'message' => 'Failed to add document']);
         $response->getBody()->write($body);
         return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
-    });
-
-    // Search Documents (GET /api/search)
-    $app->get('/search', function (Request $request, Response $response) use ($container) {
-        $query = trim($request->getQueryParams()['q'] ?? '');
-        $db = $container->get('db');
-        $conn = $db->getConnection();
-        
-        $results = !empty($query) ? search_documents($conn, $query) : [];
-        
-        $body = json_encode(['status' => 'success', 'data' => $results]);
-        $response->getBody()->write($body);
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
     });
 
 })->add($rateLimitMiddleware)->add($apiKeyMiddleware);
